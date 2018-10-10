@@ -6,10 +6,11 @@
         <script src="DataBind.js"></script>
     </head>
     <body>
-        <h1 data-bind="label" data-bind-title="x.y.z"></h1>
-        <h4 data-bind="no-such-label" data-bind-title="x.y.z"></h4>
-        <a href="https://www.schibsted.pl/">A link</a>
-        <h2 data-bind="subtitle" data-bind-title="x.y.zet"></h2>
+        <h1 data-bind="label" data-bind-title="x.y.z" title="to be overwritten"></h1>
+        <div data-bind="noSuchLabel" data-bind-class="x.y.zet"></div>
+        <a href="https://www.schibsted.pl/">A link without data bind point</a>
+        <h2 data-bind="subtitle" data-bind-title="x.y.no-such-key"></h2>
+        <a data-bind="linkLabel" data-bind-disabled="a.b.c"></a>
         <script src="dataBinding.js"></script>
     </body>
 </html>

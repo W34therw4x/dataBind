@@ -24,18 +24,29 @@
         };
 
         /**
+         * extract attribute name
+         * @private
+         *
+         * @param {Object} attribute - the data bind element attribute
+         * @returns {string}
+         */
+        var extractAttributeFromDataBind = function(attribute) {
+            var regExp = new RegExp(bindingPoint + "-","g");
+            return attribute.name.replace(regExp,"");
+        };
+
+        /**
          * extract data-bind attribute value from model
          * @private
          *
          * @param {Object} model - the data source
          * @param {string} path - lead to model value that will be binded
-         * @returns {string}
+         * @returns {(string|undefined)}
          */
         var getDataBindValue = function (model, path) {
-            var dataBindValue = path.split(".").reduce(function(prev, curr) {
+            return path.split(".").reduce(function(prev, curr) {
                 return prev && prev[curr];
             }, model);
-            return dataBindValue || "";
         };
 
         /**
@@ -47,9 +58,32 @@
          * @returns {void}
          */
         var bindElementContent = function(model, element) {
-            if (element.hasAttribute(bindingPoint)) {
-                element.innerText = getDataBindValue(model, element.getAttribute(bindingPoint));
+            var dataBindValue = getDataBindValue(model, element.getAttribute(bindingPoint));
+            if (dataBindValue !== undefined) {
+                element.innerText = dataBindValue;
             }
+        };
+
+        /**
+         * sets element attributes based on it's data-bind attributes
+         * @private
+         *
+         * @param {Object} model - the data source
+         * @param {Element} element - the element
+         * @returns {void}
+         */
+        var bindElementAttributes = function(model, element) {
+            var elementAttributes = Array.prototype.slice.call(element.attributes);
+            var dataBindAttributes = elementAttributes.filter(function(attribute) {
+                return attribute.name !== bindingPoint && isDataBindingPointAttribute(attribute);
+            });
+            dataBindAttributes.forEach(function(dataBindAttribute) {
+                var attributeName = extractAttributeFromDataBind(dataBindAttribute);
+                var dataBindValue = getDataBindValue(model, dataBindAttribute.value);
+                if (dataBindValue !== undefined) {
+                    element.setAttribute(attributeName, dataBindValue);
+                }
+            });
         };
 
         /**
@@ -61,7 +95,10 @@
          * @returns {void}
          */
         var bindSingleElement = function(model, element) {
-            bindElementContent(model, element);
+            if (element.hasAttribute(bindingPoint)) {
+                bindElementContent(model, element);
+            }
+            bindElementAttributes(model, element);
         };
 
         /**
