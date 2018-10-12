@@ -16,6 +16,4 @@ var model = {
     }
 };
 
-var dataBind = new DataBind();
-dataBind.setModel(model);
-dataBind.init();
+DataBind.init(model);
