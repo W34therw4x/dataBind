@@ -11,7 +11,8 @@ var model = {
     a: {
         b: {
             c: ""
-        }
+        },
+        labelUsedForContentAndAttribute: "same for content as for title attribute"
     }
 };
 

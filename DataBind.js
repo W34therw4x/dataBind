@@ -2,7 +2,6 @@
     "use strict";
 
     var DataBindModule = function() {
-
         /** @param {Object} model - the data source */
         var model = {};
 
@@ -16,11 +15,37 @@
         var DataBind = {};
 
         /**
+         * update HTML view, setting or changing element content
+         * @private
+         *
+         * @param {Element} element - whose content will be set
+         * @param {string} value - of content
+         * @returns {void}
+         */
+        var setElementContentOnView = function(element, value) {
+            element.innerText = value;
+        };
+
+        /**
+         * update HTML view, setting or changing element attribute
+         * @private
+         *
+         * @param {Element} element - whose attribute will be set
+         * @param {Object} dataBindAttribute - describe what have to be updated
+         * @param {string} value - of attribute
+         * @returns {void}
+         */
+        var setElementAttributeOnView = function(element, dataBindAttribute, value) {
+            var attributeName = extractAttributeFromDataBind(dataBindAttribute);
+            element.setAttribute(attributeName, value);
+        };
+
+        /**
          * observe the changes of all properties of the object
          * @private
          *
-         * @param {Object} obj - object which properties will be watched
-         * @param {(string|boolean)} path - lead to object value that will be watched
+         * @param {Object} obj - which properties will be watched
+         * @param {(string|boolean)} path - lead to object properties that will be watched
          * @returns {void}
          */
         var watch = function(obj, path) {
@@ -42,9 +67,9 @@
          * observe the changes of many properties of the object
          * @private
          *
-         * @param {Object} obj - object which properties will be watched
-         * @param {Array} props - all elements in body
-         * @param {(string|boolean)} path - lead to model value that will be watched
+         * @param {Object} obj - which properties will be watched
+         * @param {Array} props - properties that will be watched
+         * @param {(string|boolean)} path - lead to model properties that will be watched
          * @returns {void}
          */
         var watchProps = function(obj, props, path) {
@@ -59,8 +84,8 @@
          * @private
          *
          * @param {Object} obj - object which property will be watched
-         * @param {string} prop - property name
-         * @param {(string|boolean)} path - lead to model value that will be watched
+         * @param {string} prop - property that will be watched
+         * @param {(string|boolean)} path - lead to model properties that will be watched
          * @returns {void}
          */
         var watchOneProp = function(obj, prop, path) {
@@ -73,43 +98,86 @@
             defineGetAndSet(obj, prop, pathToProp);
         };
 
-        // todo: To Be Refactored...
-        var defineGetAndSet = function(obj, propName, newPath) {
-            var val = obj[propName];
+        /**
+         * set custom getters and setters on watched properties
+         * @private
+         *
+         * @param {Object} obj - object which property will be watched
+         * @param {string} prop - properties that will be watched
+         * @param {string} pathToProp - lead to model property that will be watched
+         * @returns {void}
+         */
+        var defineGetAndSet = function(obj, prop, pathToProp) {
+            var value = obj[prop];
             var getter = function() {
-                return val;
+                return value;
             };
 
-            var setter = function(newval) {
-                var oldval = val;
-                val = newval;
-                if (oldval !== newval) {
-                    dataBindElements.forEach(
-                        function(newPath, element) {
-                            var modifiedElementAttributes = getElementAttributes(element).filter(function(attribute) {
-                                return attribute.value === newPath;
-                            });
-
-                            modifiedElementAttributes.forEach(function(attribute) {
-                                if (attribute.name === bindingPoint) {
-                                    element.innerText = newval;
-                                } else {
-                                    var attributeName = extractAttributeFromDataBind(attribute);
-                                    element.setAttribute(attributeName, newval);
-                                }
-                            });
-                        }.bind(null, newPath)
-                    );
+            var setter = function(newValue) {
+                var oldValue = value;
+                value = newValue;
+                if (oldValue !== newValue) {
+                    updateAllElementsWithBoundValue(newValue, pathToProp);
                 }
             };
 
-            Object.defineProperty(obj, propName, {
+            Object.defineProperty(obj, prop, {
                 get: getter,
                 set: function(value) {
                     setter.call(this, value, true);
                 },
                 enumerable: true,
                 configurable: true
+            });
+        };
+
+        /**
+         * update elements attributes and/or content values
+         * @private
+         *
+         * @param {string} newValue - of modified prop
+         * @param {string} pathToProp - lead to model property
+         * @returns {void}
+         */
+        var updateAllElementsWithBoundValue = function(newValue, pathToProp) {
+            dataBindElements.forEach(
+                function(pathToProp, element) {
+                    var modifiedDataBindAttributes = getDataBindAttributesToUpdate(element, pathToProp);
+                    updateBoundElement(element, modifiedDataBindAttributes, newValue);
+                }.bind(null, pathToProp)
+            );
+        };
+
+        /**
+         * get attributes for which model value had changed
+         * @private
+         *
+         * @param {Element} element - the element
+         * @param {string} pathToProp - lead to model property
+         * @returns {Array}
+         */
+        var getDataBindAttributesToUpdate = function(element, pathToProp) {
+            return getElementAttributes(element).filter(function(attribute) {
+                return attribute.value === pathToProp;
+            });
+        };
+
+        /**
+         * update view, changing bound element attributes and/or content values
+         * @private
+         *
+         * @param {Element} element - whose attributes will be updated
+         * @param {Array} dataBindAttributes - describe what have to be updated
+         * @param {string} newValue - of modified prop
+         * @returns {void}
+         */
+        var updateBoundElement = function(element, dataBindAttributes, newValue) {
+            dataBindAttributes.forEach(function(dataBindAttribute) {
+                if (dataBindAttribute.name === bindingPoint) {
+                    setElementContentOnView(element, newValue);
+                } else {
+                    setElementAttributeOnView(element, dataBindAttribute, newValue);
+                }
             });
         };
 
@@ -127,7 +195,7 @@
          * check if element have data-bind attributes
          * @private
          *
-         * @param {Object} attribute - the data bind element attribute
+         * @param {Object} attribute - one of element attributes
          * @returns {boolean}
          */
         var isDataBindingPointAttribute = function(attribute) {
@@ -150,7 +218,7 @@
          * get data-bind attribute value from model
          * @private
          *
-         * @param {string} path - lead to model value that will be binded
+         * @param {string} path - lead to model value that will be bound
          * @returns {(string|undefined)}
          */
         var getDataBindValue = function(path) {
@@ -169,7 +237,7 @@
         var bindElementContent = function(element) {
             var dataBindValue = getDataBindValue(element.getAttribute(bindingPoint));
             if (dataBindValue !== undefined) {
-                element.innerText = dataBindValue;
+                setElementContentOnView(element, dataBindValue);
             }
         };
 
@@ -186,10 +254,9 @@
                 return attribute.name !== bindingPoint && isDataBindingPointAttribute(attribute);
             });
             dataBindAttributes.forEach(function(dataBindAttribute) {
-                var attributeName = extractAttributeFromDataBind(dataBindAttribute);
                 var dataBindValue = getDataBindValue(dataBindAttribute.value);
                 if (dataBindValue !== undefined) {
-                    element.setAttribute(attributeName, dataBindValue);
+                    setElementAttributeOnView(element, dataBindAttribute, dataBindValue);
                 }
             });
         };
@@ -262,12 +329,11 @@
         return DataBind;
     };
 
-    if (typeof module != 'undefined' && module.exports) {
+    if (typeof module != "undefined" && module.exports) {
         module.exports = DataBindModule;
-    } else if (typeof define === 'function' && define.amd) {
-        define('DataBind', [], DataBindModule);
+    } else if (typeof define === "function" && define.amd) {
+        define("DataBind", [], DataBindModule);
     } else {
         global.DataBind = DataBindModule;
     }
-
 })(this.window || global);
